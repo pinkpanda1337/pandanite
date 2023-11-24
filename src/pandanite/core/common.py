@@ -1,0 +1,2 @@
+TransactionAmount = int
+WorkAmount = int

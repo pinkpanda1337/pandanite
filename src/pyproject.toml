@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "pandanite"
+version = "0.1.0"
+description = ""
+authors = ["Mr Pandabear <mrpanda@panda.panda"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pycryptodome = "^3.19.0"
+ed25519 = "^1.5"
+pytest = "^7.4.3"
+loguru = "^0.7.2"
+mypy = "^1.7.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
