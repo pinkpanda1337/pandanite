@@ -9,6 +9,7 @@ from pandanite.core.crypto import (
     wallet_address_from_public_key,
 )
 
+
 class User:
     def __init__(self):
         keys = generate_key_pair()
@@ -18,7 +19,7 @@ class User:
     def get_address(self):
         return wallet_address_from_public_key(self.public_key)
 
-    def send(self, to: 'User', amount: TransactionAmount) -> Transaction:
+    def send(self, to: "User", amount: TransactionAmount) -> Transaction:
         from_wallet = self.get_address()
         to_wallet = to.get_address()
         t = Transaction(to_wallet, amount, from_wallet, self.public_key)

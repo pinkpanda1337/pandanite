@@ -5,21 +5,20 @@ from pandanite.core.transaction import Transaction
 
 
 def check_transaction_json_serialization():
-
     miner = User()
     receiver = User()
 
-    t = miner.mine();
-    t2 = miner.send(receiver, PDN(30.0));
-    
+    t = miner.mine()
+    t2 = miner.send(receiver, PDN(30.0))
+
     assert t2.signature_valid()
 
     # test the send transaction
     ts = t2.get_timestamp()
     serialized = json.dumps(t2.to_json())
-    parsed = json.loads(serialized);
+    parsed = json.loads(serialized)
     deserialized = Transaction()
-    deserialized.from_json(parsed);
+    deserialized.from_json(parsed)
 
     assert deserialized.signature_valid()
     assert t2 == deserialized
@@ -28,7 +27,7 @@ def check_transaction_json_serialization():
 
     # test mining transaction
     serialized = json.dumps(t.to_json())
-    
+
     parsed = json.loads(serialized)
     deserialized = Transaction()
     deserialized.from_json(parsed)
@@ -37,6 +36,7 @@ def check_transaction_json_serialization():
     assert t == deserialized
     assert ts, deserialized.get_timestamp()
 
+
 # TEST(check_transaction_struct_serialization) {
 
 #     User miner;
@@ -44,7 +44,7 @@ def check_transaction_json_serialization():
 
 #     Transaction t = miner.mine();
 #     Transaction t2 = miner.send(receiver, PDN(30.0));
-    
+
 #     ASSERT_TRUE(t2.signatureValid());
 
 #     // test the send transaction
@@ -72,7 +72,7 @@ def check_transaction_json_serialization():
 
 #     Transaction t = miner.mine();
 #     Transaction t2 = miner.send(receiver, PDN(30.0));
-    
+
 #     Transaction a = t;
 #     Transaction b = t2;
 #     ASSERT_TRUE(a==t);
@@ -89,7 +89,7 @@ def check_transaction_json_serialization():
 
 #     TransactionInfo t1 = a.serialize();
 #     TransactionInfo t2 = b.serialize();
-    
+
 #     char buf1[TRANSACTIONINFO_BUFFER_SIZE];
 #     char buf2[TRANSACTIONINFO_BUFFER_SIZE];
 

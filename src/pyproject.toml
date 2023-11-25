@@ -12,6 +12,8 @@ ed25519 = "^1.5"
 pytest = "^7.4.3"
 loguru = "^0.7.2"
 mypy = "^1.7.1"
+pymongo = "^4.6.0"
+black = "^23.11.0"
 
 
 [build-system]

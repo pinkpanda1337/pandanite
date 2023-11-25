@@ -2,6 +2,7 @@ import json
 from pandanite.core.block import Block
 from pandanite.core.user import User
 
+
 def test_block_json_serialization():
     a = Block()
     miner = User()
@@ -16,6 +17,7 @@ def test_block_json_serialization():
     print(a.to_json())
     print(b.to_json())
     assert a == b
+
 
 # TEST(check_block_struct_serialization) {
 #     Block a
@@ -43,7 +45,7 @@ def test_block_json_serialization():
 #         a.addTransaction(miner.send(receiver, 1));
 #     }
 #     BlockHeader d = a.serialize();
-    
+
 #     char buf[BLOCKHEADER_BUFFER_SIZE];
 #     blockHeaderToBuffer(d, buf);
 

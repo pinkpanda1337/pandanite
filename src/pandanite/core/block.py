@@ -13,35 +13,6 @@ from pandanite.core.helpers import get_current_time
 from pandanite.core.transaction import Transaction
 
 
-class BlockHeader:
-    def __init__(
-        self,
-        id: int,
-        timestamp: int,
-        difficulty: int,
-        num_transactions: int,
-        last_block_hash: SHA256Hash,
-        merkle_root: SHA256Hash,
-        nonce: SHA256Hash,
-    ):
-        self.id = id
-        self.timestamp = timestamp
-        self.difficulty = difficulty
-        self.num_transactions = num_transactions
-        self.last_block_hash = last_block_hash
-        self.merkle_root = merkle_root
-        self.nonce = nonce
-
-
-BLOCKHEADER_BUFFER_SIZE = 116
-
-# def block_header_from_buffer(buffer) -> BlockHeader:
-#     pass
-
-
-# def block_header_to_buffer(block_header: BlockHeader, buffer: bytearray):
-#     pass
-
 class Block:
     def __init__(self):
         self.transactions: List[Transaction] = []
@@ -77,27 +48,6 @@ class Block:
             curr.from_json(t)
             self.transactions.append(curr)
 
-    def from_block_header(self, b: BlockHeader, transactions: List[Transaction]):
-        self.id = b.id
-        self.timestamp = b.timestamp
-        self.difficulty = b.difficulty
-        self.nonce = b.nonce
-        self.merkle_root = b.merkle_root
-        self.lastBlockHash = b.last_block_hash
-        for t in transactions:
-            self.add_transaction(t)
-
-    def serialize(self) -> BlockHeader:
-        return BlockHeader(
-            self.id,
-            self.timestamp,
-            self.difficulty,
-            len(self.transactions),
-            self.last_block_hash,
-            self.merkle_root,
-            self.nonce,
-        )
-
     def to_json(self) -> Dict:
         return {
             "id": self.id,
@@ -106,7 +56,7 @@ class Block:
             "nonce": sha_256_to_string(self.nonce),
             "merkleRoot": sha_256_to_string(self.merkle_root),
             "lastBlockHash": sha_256_to_string(self.last_block_hash),
-            "transactions": [t.to_json() for t in self.transactions]
+            "transactions": [t.to_json() for t in self.transactions],
         }
 
     def add_transaction(self, t: Transaction):

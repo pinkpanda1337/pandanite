@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class ExecutionStatus(Enum):
     SENDER_DOES_NOT_EXIST = "SENDER_DOES_NOT_EXIST"
     BALANCE_TOO_LOW = "BALANCE_TOO_LOW"

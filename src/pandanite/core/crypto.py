@@ -5,6 +5,7 @@ import ed25519
 from typing import TypeAlias, Tuple, Union
 from Crypto.Hash import RIPEMD160
 from pandanite.core.common import WorkAmount
+
 SHA256Hash: TypeAlias = bytearray
 RIPEMDHash: TypeAlias = bytearray
 PublicWalletAddress: TypeAlias = bytearray
@@ -19,6 +20,7 @@ NULL_ADDRESS = PublicWalletAddress(25)
 
 def sha_256(buf: Union[bytes, bytearray]) -> SHA256Hash:
     return bytearray(hashlib.sha256(buf).digest())
+
 
 def ripemd(buf: Union[bytes, bytearray]) -> RIPEMDHash:
     hash_obj = RIPEMD160.new()
@@ -82,9 +84,11 @@ def wallet_address_from_public_key(input_key: PublicKey) -> PublicWalletAddress:
     address[24] = hash4[3]
     return address
 
+
 def verify_hash(target: SHA256Hash, nonce: SHA256Hash, difficulty: int):
     concat = concat_hashes(target, nonce)
     return check_leading_zero_bits(concat, difficulty)
+
 
 def generate_key_pair() -> Tuple[PublicKey, PrivateKey]:
     private_key = ed25519.SigningKey(random.randint(0, 2**256).to_bytes(32))
@@ -109,7 +113,7 @@ def public_key_to_string(public_key: PublicKey) -> str:
 def string_to_public_key(s: str) -> PublicKey:
     if len(s) != 64:
         raise Exception("Invalid public key string")
-    return ed25519.keys.VerifyingKey(s, encoding='base16')
+    return ed25519.keys.VerifyingKey(s, encoding="base16")
 
 
 def private_key_to_string(private_key: PrivateKey) -> str:
@@ -119,7 +123,7 @@ def private_key_to_string(private_key: PrivateKey) -> str:
 def string_to_private_key(s: str) -> PrivateKey:
     if len(s) != 128:
         raise Exception("Invalid private key string")
-    return ed25519.keys.SigningKey(s, encoding='base16')
+    return ed25519.keys.SigningKey(s, encoding="base16")
 
 
 # signatures
@@ -131,10 +135,8 @@ def string_to_signature(t: str) -> TransactionSignature:
     return hex_decode(t)
 
 
-def sign_with_private_key(
-    content: str, priv_key: PrivateKey
-) -> TransactionSignature:
-    return sign_with_private_key_bytes(content.encode('utf-8'), priv_key)
+def sign_with_private_key(content: str, priv_key: PrivateKey) -> TransactionSignature:
+    return sign_with_private_key_bytes(content.encode("utf-8"), priv_key)
 
 
 def sign_with_private_key_bytes(
@@ -146,19 +148,23 @@ def sign_with_private_key_bytes(
 def check_signature(
     content: str, signature: TransactionSignature, verifying_key: PublicKey
 ) -> bool:
-    return check_signature_bytes(content.encode('utf-8'), signature, verifying_key)
+    return check_signature_bytes(content.encode("utf-8"), signature, verifying_key)
 
 
 def check_signature_bytes(
-    bytes: Union[bytes, bytearray], signature: TransactionSignature, verifying_key: PublicKey
+    bytes: Union[bytes, bytearray],
+    signature: TransactionSignature,
+    verifying_key: PublicKey,
 ) -> bool:
     try:
         verifying_key.verify(signature, bytes)
         return True
     except:
         return False
-    
+
+
 # miner
+
 
 def mine_hash(target: SHA256Hash, challenge_size: int):
     while True:
