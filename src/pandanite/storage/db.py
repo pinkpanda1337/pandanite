@@ -14,7 +14,8 @@ from pandanite.core.block import Block
 Mongo collection schemas
 blocks: Results of block.to_json() are stored directly
 transaction_to_block: { 'tx_id': string, 'block_id': int }
-ledger: {'wallet': string, 'balance': int, 'tx_ids': string[] }
+ledger: {'address': string, 'balance': int }
+wallet_to_transaction: {'address': string, 'tx_ids': list[string]}
 info: {'total_work': int}
 """
 
@@ -29,10 +30,15 @@ class PandaniteDB:
         self.blocks.create_index("id", unique=True)
         self.ledger = self.db.ledger
         self.ledger.create_index("address", unique=True)
+        self.wallet_to_transaction = self.db.wallet_to_transaction
+        self.wallet_to_transaction.create_index("address", unique=True)
         self.info = self.db.info
 
     def add_block(self, block: Block):
-        return None
+        self.blocks.replace_one({'id': block.get_id()}, block.to_json(), upsert=True)
+    
+    def start_session(self):
+        return self.db.start_session()
 
     def get_wallets(
         self, wallets: list[PublicWalletAddress]
@@ -45,7 +51,19 @@ class PandaniteDB:
             if found_wallet:
                 wallet_totals[wallet] = found_wallet["balance"]
         return wallet_totals
+    
+    def update_wallet(self, wallet: PublicWalletAddress, amount: TransactionAmount):
+        address = wallet_address_to_string(wallet)
+        updated_record = {
+            'address': address,
+            'balance': amount,
+        }
+        self.ledger.replace_one({'address': address}, updated_record, upsert=True)
 
+    def add_wallet_transaction(self, wallet: PublicWalletAddress, tx_id: str):
+        address = wallet_address_to_string(wallet)
+        self.wallet_to_transaction.update_one({'address': address}, {'$push': {'tx_ids': tx_id}}, upsert = True)
+        
     def pop_block(self):
         # TODO remove actual block from mongo collection
         return None

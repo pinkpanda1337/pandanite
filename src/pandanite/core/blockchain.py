@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, cast
 from pandanite.logging import logger
 from pandanite.core.helpers import PDN, compute_difficulty
 from pandanite.core.constants import (
@@ -6,12 +6,13 @@ from pandanite.core.constants import (
     DESIRED_BLOCK_TIME_SEC,
     MAX_TRANSACTIONS_PER_BLOCK,
 )
-from pandanite.core.crypto import PublicWalletAddress
+from pandanite.core.common import TransactionAmount
+from pandanite.core.crypto import PublicWalletAddress, sha_256_to_string
 from pandanite.core.executor import ExecutionStatus
 from pandanite.core.transaction import Transaction, get_merkle_hash
 from pandanite.storage.db import PandaniteDB
 from pandanite.core.block import Block
-
+from pandanite.core.executor import execute_block
 
 class BlockChain:
     def __init__(self):
@@ -110,7 +111,22 @@ class BlockChain:
         wallets = self.db.get_wallets(withdrawal_wallets)
 
         # TODO: Run executor, add block
+        status, updated_wallets = execute_block(self.db, wallets, block, self.get_current_mining_fee(block.get_id())) 
 
+        if status != ExecutionStatus.SUCCESS:
+            return status
+        
+        updated_wallets = cast(Dict[PublicWalletAddress, TransactionAmount], updated_wallets)
+
+        with self.db.start_session() as session:
+            with session.start_transaction():
+                for wallet in updated_wallets.keys():
+                    self.db.update_wallet(wallet, updated_wallets[wallet])
+                for t in block.get_transactions():
+                    tx_id = sha_256_to_string(t.get_hash())
+                    self.db.add_wallet_transaction(t.get_recepient(), tx_id)
+                    if not t.is_fee():
+                        self.db.add_wallet_transaction(t.get_sender(), tx_id)
         return ExecutionStatus.SUCCESS
 
     def _update_difficulty(self):

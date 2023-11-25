@@ -1,5 +1,5 @@
+import copy
 from typing import List, Dict
-
 from pandanite.core.crypto import (
     SHA256Hash,
     sha_256,
@@ -14,26 +14,14 @@ from pandanite.core.transaction import Transaction
 
 
 class Block:
-    def __init__(self):
+    def __init__(self: 'Block'):
         self.transactions: List[Transaction] = []
         self.id = 1
         self.timestamp = get_current_time()
         self.difficulty = MIN_DIFFICULTY
-        self.transactions: List[Transaction] = []
         self.merkle_root = NULL_SHA256_HASH
         self.last_block_hash = NULL_SHA256_HASH
         self.nonce = NULL_SHA256_HASH
-
-    def from_block(self, block: "Block"):
-        self.nonce = block.nonce
-        self.id = block.id
-        self.difficulty = block.difficulty
-        self.timestamp = block.timestamp
-        self.merkle_root = block.merkle_root
-        self.lastBlockHash = block.last_block_hash
-        self.transactions = []
-        for t in block.transactions:
-            self.transactions.append(t.copy())
 
     def from_json(self, block: Dict):
         self.nonce = string_to_sha_256(block["nonce"])
@@ -58,6 +46,9 @@ class Block:
             "lastBlockHash": sha_256_to_string(self.last_block_hash),
             "transactions": [t.to_json() for t in self.transactions],
         }
+    
+    def copy(self) -> "Block":
+        return copy.deepcopy(self)
 
     def add_transaction(self, t: Transaction):
         self.transactions.append(t.copy())

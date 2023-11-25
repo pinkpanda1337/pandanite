@@ -77,7 +77,7 @@ class Transaction:
 
     def sign(self, pub_key: PublicKey, signing_key: PrivateKey):
         hash = self.hash_contents()
-        signature = sign_with_private_key_bytes(hash, signing_key)
+        signature = sign_with_private_key_bytes(bytes(hash), signing_key)
         self.signature = signature
 
     def set_transaction_fee(self, amount: TransactionAmount):
@@ -151,28 +151,29 @@ class Transaction:
         if self.is_fee():
             return True
         hash = self.hash_contents()
-        return check_signature_bytes(hash, self.signature, self.signing_key)
+        return check_signature_bytes(bytes(hash), self.signature, self.signing_key)
 
     def is_fee(self) -> bool:
         return self.from_ == None
 
     def __eq__(self, other):
         if isinstance(other, Transaction):
-            return (
+            ret = (
                 self.signature == other.signature
                 and self.timestamp == other.timestamp
                 and self.to == other.to
                 and self.from_ == other.from_
                 and self.amount == other.amount
                 and self.fee == other.fee
-                and self.is_fee() == other.is_fee
+                and self.is_fee() == other.is_fee()
             )
+            return ret
         return False
 
 
 # merkle proofs
 class Node:
-    def __init__(self, hash):
+    def __init__(self, hash: SHA256Hash):
         self.hash = hash
         self.parent: Optional[Node] = None
         self.left: Optional[Node] = None

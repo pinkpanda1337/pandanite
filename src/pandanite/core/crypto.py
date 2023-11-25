@@ -152,7 +152,7 @@ def check_signature(
 
 
 def check_signature_bytes(
-    bytes: Union[bytes, bytearray],
+    bytes: bytes,
     signature: TransactionSignature,
     verifying_key: PublicKey,
 ) -> bool:
