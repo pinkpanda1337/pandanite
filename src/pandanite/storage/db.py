@@ -98,7 +98,7 @@ class PandaniteDB:
         wallet_totals: Dict[str, TransactionAmount] = {}
         for wallet in wallets:
             wallet_address = wallet_address_to_string(wallet)
-            found_wallet = self.ledger.find_one({"wallet": wallet_address})
+            found_wallet = self.ledger.find_one({"address": wallet_address})
             if found_wallet:
                 wallet_totals[wallet_address] = found_wallet["balance"]
         return wallet_totals
@@ -116,6 +116,12 @@ class PandaniteDB:
             {"address": address}, {"$push": {"tx_ids": tx_id}}, upsert=True
         )
 
+    def remove_wallet_transaction(self, wallet: PublicWalletAddress, tx_id: str):
+        address = wallet_address_to_string(wallet)
+        self.wallet_to_transaction.update_one(
+            {"address": address}, {"$pull": {"tx_ids": tx_id}}, upsert=True
+        )
+
     def pop_block(self):
         # TODO remove actual block from mongo collection
         return None
@@ -124,9 +130,6 @@ class PandaniteDB:
         return 0
 
     def find_block_for_transaction_id(self, txid: SHA256Hash) -> int:
-        return 0
-
-    def get_wallet_value(self, addr: PublicWalletAddress) -> TransactionAmount:
         return 0
 
     def get_transactions_for_wallet(

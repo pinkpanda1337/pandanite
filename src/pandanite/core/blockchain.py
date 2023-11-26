@@ -14,7 +14,7 @@ from pandanite.core.executor import ExecutionStatus
 from pandanite.core.transaction import Transaction, get_merkle_hash
 from pandanite.storage.db import PandaniteDB
 from pandanite.core.block import Block
-from pandanite.core.executor import execute_block
+from pandanite.core.executor import execute_block, rollback_block
 
 
 class BlockChain:
@@ -54,10 +54,27 @@ class BlockChain:
     def get_header_chain_stats(self) -> Dict[str, int]:
         return {}
 
-    def pop_block(self):
-        self.db.pop_block()
-        if self.db.get_num_blocks() > 1:
-            self._update_difficulty()
+    def pop_block(self: "BlockChain"):
+        block = self.db.get_block(self.db.get_num_blocks())
+        affected_wallets: list[PublicWalletAddress] = []
+        for t in block.get_transactions():
+            affected_wallets.append(t.get_recepient())
+            if not t.is_fee():
+                affected_wallets.append(t.get_sender())
+
+        wallets = self.db.get_wallets(affected_wallets)
+        updated_wallets = rollback_block(wallets, block)
+        with self.db.start_session() as session:
+            with session.start_transaction():
+                self.db.pop_block()
+                for wallet in updated_wallets.keys():
+                    self.db.update_wallet(wallet, updated_wallets[wallet])
+                for t in block.get_transactions():
+                    tx_id = sha_256_to_string(t.get_hash())
+                    self.db.remove_wallet_transaction(t.get_recepient(), tx_id)
+                    if not t.is_fee() and block.get_id() != 1:
+                        self.db.remove_wallet_transaction(t.get_sender(), tx_id)
+                self._update_difficulty()
 
     def add_block(self, block: Block, network_timestamp: int = 0) -> ExecutionStatus:
         if len(block.get_transactions()) > MAX_TRANSACTIONS_PER_BLOCK:

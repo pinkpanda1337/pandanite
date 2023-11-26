@@ -121,3 +121,33 @@ def execute_block(
                     wallets[miner_address] = fees
 
     return ExecutionStatus.SUCCESS, wallets
+
+
+def rollback_block(
+    wallets: Dict[str, TransactionAmount],
+    block: Block,
+) -> Dict[str, TransactionAmount]:
+    miner: Optional[PublicWalletAddress] = None
+    mining_fee: int = 0
+    for t in block.get_transactions():
+        if t.is_fee():
+            miner = t.get_recepient()
+            mining_fee = t.get_amount()
+            break
+    if not miner:
+        raise Exception('Invalid block: no miner')
+    miner_address = wallet_address_to_string(miner)
+    wallets[miner_address] -= mining_fee
+
+    for t in block.get_transactions():
+        if t.is_fee():
+            continue
+        else:
+            sender_address = wallet_address_to_string(t.get_sender())
+            recepient = wallet_address_to_string(t.get_recepient())
+            amount = t.get_amount()
+            fee = t.get_fee()
+            wallets[sender_address] += amount + fee
+            wallets[recepient] -= amount
+            wallets[miner_address] -= fee
+    return wallets
