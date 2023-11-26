@@ -1,7 +1,8 @@
-from typing import Dict, List, Optional, Deque, cast
-from collections import deque
 import copy
 import ed25519
+import hashlib
+from typing import Dict, List, Optional, Deque, cast
+from collections import deque
 from pandanite.core.crypto import (
     PublicWalletAddress,
     PublicKey,
@@ -43,6 +44,12 @@ class Transaction:
         self.amount: TransactionAmount = amount if amount else 0
         self.fee: TransactionAmount = fee
 
+        # This is just used for genesis block transactions which are missing signing key
+        self._wallet: Optional[PublicWalletAddress] = None
+
+    def set_wallet_override(self, override: PublicWalletAddress):
+        self._wallet = override
+
     def from_json(self, data: Dict):
         self.timestamp = int(data["timestamp"])
         self.to = string_to_wallet_address(data["to"])
@@ -51,6 +58,9 @@ class Transaction:
         if "signingKey" in data.keys():
             self.signature = string_to_signature(data["signature"])
             self.signing_key = string_to_public_key(data["signingKey"])
+
+        if "from" in data.keys() and len(data["from"]) != 0:
+            self.set_wallet_override(string_to_wallet_address(data["from"]))
 
     def to_json(self):
         result = {}
@@ -98,23 +108,30 @@ class Transaction:
         return self.timestamp
 
     def get_hash(self) -> SHA256Hash:
-        hash = self.hash_contents()
+        ctx = hashlib.sha256()
+        ctx.update(self.hash_contents())
         if not self.is_fee():
             if not self.signature:
                 raise Exception("Tried to get hash of unsigned transaction")
-            hash += self.signature
-        return sha_256(hash)
+            ctx.update(self.signature)
+        return bytearray(ctx.digest())
 
     def hash_contents(self) -> SHA256Hash:
-        buf = bytearray()
-        buf += self.to
+        ctx = hashlib.sha256()
+        fee = bytearray(self.fee.to_bytes(8))
+        amount = bytearray(self.amount.to_bytes(8))
+        timestamp = bytearray(self.timestamp.to_bytes(8))
+        fee.reverse()
+        amount.reverse()
+        timestamp.reverse()
+
+        ctx.update(self.to)
         if not self.is_fee():
-            buf += wallet_address_from_public_key(self.signing_key)
-        buf += (
-            self.fee.to_bytes(8) + self.amount.to_bytes(8) + self.timestamp.to_bytes(8)
-        )
-        ret = sha_256(buf)
-        return ret
+            ctx.update(self._wallet or wallet_address_from_public_key(self.signing_key))
+        ctx.update(fee)
+        ctx.update(amount)
+        ctx.update(timestamp)
+        return bytearray(ctx.digest())
 
     def sign(self, private_key: PrivateKey):
         hash = self.hash_contents()
@@ -129,6 +146,8 @@ class Transaction:
     def signature_valid(self) -> bool:
         if self.is_fee():
             return True
+        if not self.signature:
+            raise Exception('No signature for transaction')
         hash = self.hash_contents()
         return check_signature_bytes(bytes(hash), self.signature, self.signing_key)
 
@@ -160,15 +179,18 @@ class Node:
 
 
 def get_merkle_hash(items: List[Transaction]) -> SHA256Hash:
-    fringe_nodes: Dict[bytearray, Node] = {}
     items.sort(key=lambda a: sha_256_to_string(a.get_hash()), reverse=True)
-
+    print(
+        "FOUND: ",
+        "4727299c12a54980b4e49584f358422ab10ca3b77e82f509e6feb0f6614e2f32"
+        in [sha_256_to_string(a.get_hash()).lower() for a in items],
+    )
     q: Deque[Node] = deque()
 
     for item in items:
         h = item.get_hash()
-        fringe_nodes[h] = Node(h)
-        q.append(fringe_nodes[h])
+        node = Node(h)
+        q.append(node)
 
     if len(q) % 2 == 1:
         repeat = Node(q[-1].hash)

@@ -1,4 +1,5 @@
 import copy
+import binascii
 from typing import List, Dict
 from pandanite.core.crypto import (
     SHA256Hash,
@@ -69,11 +70,12 @@ class Block:
         self.difficulty = d
 
     def get_hash(self) -> SHA256Hash:
+        difficulty = bytearray(self.difficulty.to_bytes(4))
+        timestamp = bytearray(self.timestamp.to_bytes(8))
+        difficulty.reverse()
+        timestamp.reverse()
         return sha_256(
-            self.merkle_root
-            + self.last_block_hash
-            + self.difficulty.to_bytes(4)
-            + self.timestamp.to_bytes(8)
+            bytes(self.merkle_root + self.last_block_hash + difficulty + timestamp)
         )
 
     def get_nonce(self) -> SHA256Hash:

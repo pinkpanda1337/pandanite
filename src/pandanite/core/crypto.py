@@ -41,7 +41,7 @@ def hex_decode(hex: str) -> bytearray:
 
 
 def hex_encode(buf: Union[bytes, bytearray]) -> str:
-    return buf.hex()
+    return buf.hex().upper()
 
 
 def concat_hashes(a: SHA256Hash, b: SHA256Hash) -> SHA256Hash:
@@ -67,22 +67,25 @@ def remove_work(previous_work: WorkAmount, challenge_size: int) -> WorkAmount:
     return previous_work - 2**challenge_size
 
 
-# keys
 def wallet_address_from_public_key(input_key: PublicKey) -> PublicWalletAddress:
-    # Based on: https://en.bitcoin.it/wiki/Technical_background_of_version_1_Bitcoin_addresses
-    hash = sha_256(input_key.to_bytes())
-    hash2 = ripemd(hash)
-    hash3 = sha_256(hash2)
-    hash4 = sha_256(hash3)
-    address: PublicWalletAddress = NULL_ADDRESS
-    address[0] = 0
+    address = [0]
+
+    hash1 = hashlib.sha256(input_key.to_bytes())
+
+    hash2 = RIPEMD160.new()
+    hash2.update(hash1.digest())
+
+    hash3 = hashlib.sha256(hash2.digest())
+    hash4 = hashlib.sha256(hash3.digest())
+
     for i in range(0, 20):
-        address[i] = hash2[i]
-    address[21] = hash4[0]
-    address[22] = hash4[1]
-    address[23] = hash4[2]
-    address[24] = hash4[3]
-    return address
+        address.append(hash2.digest()[i])
+
+    address.append(hash4.digest()[0])
+    address.append(hash4.digest()[1])
+    address.append(hash4.digest()[2])
+    address.append(hash4.digest()[3])
+    return bytearray(address)
 
 
 def verify_hash(target: SHA256Hash, nonce: SHA256Hash, difficulty: int):
@@ -126,7 +129,6 @@ def string_to_private_key(s: str) -> PrivateKey:
     return ed25519.keys.SigningKey(s, encoding="base16")
 
 
-# signatures
 def signature_to_string(t: TransactionSignature) -> str:
     return hex_encode(t)
 
@@ -161,9 +163,6 @@ def check_signature_bytes(
         return True
     except:
         return False
-
-
-# miner
 
 
 def mine_hash(target: SHA256Hash, challenge_size: int):

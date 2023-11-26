@@ -1,3 +1,5 @@
+import json
+
 from typing import Dict, cast
 from pandanite.logging import logger
 from pandanite.core.helpers import PDN, compute_difficulty
@@ -7,7 +9,7 @@ from pandanite.core.constants import (
     MAX_TRANSACTIONS_PER_BLOCK,
 )
 from pandanite.core.common import TransactionAmount
-from pandanite.core.crypto import PublicWalletAddress, sha_256_to_string
+from pandanite.core.crypto import PublicWalletAddress, sha_256_to_string, mine_hash
 from pandanite.core.executor import ExecutionStatus
 from pandanite.core.transaction import Transaction, get_merkle_hash
 from pandanite.storage.db import PandaniteDB
@@ -16,8 +18,16 @@ from pandanite.core.executor import execute_block
 
 
 class BlockChain:
-    def __init__(self):
-        self.db = PandaniteDB()
+    def __init__(self, db: PandaniteDB):
+        self.db = db
+        self.difficulty = 16
+
+    def load_genesis(self):
+        self.db.clear()
+        with open("genesis.json", "r") as f:
+            block = Block()
+            block.from_json(json.loads(f.read()))
+            return self.add_block(block)
 
     def get_current_mining_fee(self, block_id: int) -> int:
         logical_block = block_id + 125180 + 7750 + 18000
@@ -47,14 +57,14 @@ class BlockChain:
 
     def pop_block(self):
         self.db.pop_block()
-        if self.db.get_block_count() > 1:
+        if self.db.get_num_blocks() > 1:
             self._update_difficulty()
 
-    def add_block(self, block: Block, network_timestamp: int) -> ExecutionStatus:
+    def add_block(self, block: Block, network_timestamp: int = 0) -> ExecutionStatus:
         if len(block.get_transactions()) > MAX_TRANSACTIONS_PER_BLOCK:
             return ExecutionStatus.INVALID_TRANSACTION_COUNT
 
-        if block.get_id() != self.db.get_block_count() + 1:
+        if block.get_id() != self.db.get_num_blocks() + 1:
             return ExecutionStatus.INVALID_BLOCK_ID
 
         # check difficulty + nonce

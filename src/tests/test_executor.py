@@ -53,7 +53,6 @@ def test_check_valid_send():
     t = miner.mine()
     b.add_transaction(t)
     t2 = miner.send(receiver, PDN(30.0))
-    print("SIG STATUS" + str(t2.signature_valid()))
     b.add_transaction(t2)
 
     db = PandaniteDB()
