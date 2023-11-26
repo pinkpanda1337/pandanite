@@ -1,9 +1,15 @@
 from enum import Enum
 from typing import Dict, Optional, Set, Tuple
 from pandanite.core.common import TransactionAmount
-from pandanite.core.crypto import PublicWalletAddress, SHA256Hash, wallet_address_from_public_key
+from pandanite.core.crypto import (
+    PublicWalletAddress,
+    sha_256_to_string,
+    wallet_address_from_public_key,
+    wallet_address_to_string,
+)
 from pandanite.core.block import Block
 from pandanite.storage.db import PandaniteDB
+
 
 class ExecutionStatus(Enum):
     SENDER_DOES_NOT_EXIST = "SENDER_DOES_NOT_EXIST"
@@ -33,63 +39,83 @@ class ExecutionStatus(Enum):
     IS_SYNCING = "IS_SYNCING"
     SUCCESS = "SUCCESS"
 
-def execute_block(db: PandaniteDB, wallets: Dict[PublicWalletAddress, TransactionAmount], block: Block, block_mining_fee: TransactionAmount) -> Tuple[ExecutionStatus, Optional[Dict[PublicWalletAddress, TransactionAmount]]]:
+
+def execute_block(
+    db: PandaniteDB,
+    wallets: Dict[str, TransactionAmount],
+    block: Block,
+    block_mining_fee: TransactionAmount,
+) -> Tuple[ExecutionStatus, Optional[Dict[str, TransactionAmount]]]:
     # try executing each transaction
     miner: Optional[PublicWalletAddress] = None
     mining_fee: TransactionAmount = 0
-    transaction_hashes: Set[SHA256Hash] = set()
+    transaction_hashes: Set[str] = set()
 
     for t in block.get_transactions():
-        tx_id = t.get_hash()
+        tx_id = sha_256_to_string(t.get_hash())
         if t.is_fee():
             if miner != None:
                 return ExecutionStatus.EXTRA_MINING_FEE, None
             else:
-                miner = t.to_wallet()
+                miner = t.get_recepient()
                 mining_fee = t.get_amount()
-        elif (tx_id in transaction_hashes or db.find_block_for_transaction(t) > 0):
+        elif tx_id in transaction_hashes or db.find_block_for_transaction(t) > 0:
             return ExecutionStatus.EXPIRED_TRANSACTION, None
-        
-        if not t.is_fee() and block.get_id() > 1 and wallet_address_from_public_key(t.get_signing_key()) != t.from_wallet():
-            return ExecutionStatus.WALLET_SIGNATURE_MISMATCH, None
-        
-        
+
+        transaction_hashes.add(tx_id)
+
     if not miner:
         return ExecutionStatus.NO_MINING_FEE, None
 
-    if (mining_fee != block_mining_fee):
+    miner_address = wallet_address_to_string(miner)
+
+    if mining_fee != block_mining_fee:
         return ExecutionStatus.INCORRECT_MINING_FEE, None
 
     for t in block.get_transactions():
-        if (not t.is_fee() and not t.signature_valid() and block.get_id() != 1):
+        if not t.is_fee() and not t.signature_valid() and block.get_id() != 1:
             return ExecutionStatus.INVALID_SIGNATURE, None
+
+        recepient_address = wallet_address_to_string(t.get_recepient())
 
         if block.get_id() == 1:
             if t.get_recepient() in wallets.keys():
-                wallets[t.get_recepient()] += t.get_amount()
+                wallets[recepient_address] += t.get_amount()
         else:
-            # from account must exist
-            if not t.get_sender() in wallets.keys():
-                return ExecutionStatus.SENDER_DOES_NOT_EXIST, None
-            amount = t.get_amount()
-            fees = t.get_fee()
-            available = wallets[t.get_sender()]
-
-            if available < (amount + fees):
-                return ExecutionStatus.BALANCE_TOO_LOW, None
-            
-            wallets[t.get_sender()] -= amount + fees
-            
-            # deposit funds
-            if t.get_recepient() in wallets.keys():
-                wallets[t.get_recepient()] += amount
+            if t.is_fee():
+                amount = t.get_amount()
+                if amount == block_mining_fee:
+                    if recepient_address in wallets.keys():
+                        wallets[recepient_address] += amount
+                    else:
+                        wallets[recepient_address] = amount
+                else:
+                    return ExecutionStatus.INCORRECT_MINING_FEE, None
             else:
-                wallets[t.get_recepient()] = amount
+                sender_address = wallet_address_to_string(t.get_sender())
 
-            # deposit fees to miner
-            if miner in wallets.keys():
-                wallets[miner] += fees
-            else:
-                wallets[miner] = fees
+                # from account must exist
+                if not sender_address in wallets.keys():
+                    return ExecutionStatus.SENDER_DOES_NOT_EXIST, None
+                amount = t.get_amount()
+                fees = t.get_fee()
+                available = wallets[sender_address]
+
+                if available < (amount + fees):
+                    return ExecutionStatus.BALANCE_TOO_LOW, None
+
+                wallets[sender_address] -= amount + fees
+
+                # deposit funds
+                if recepient_address in wallets.keys():
+                    wallets[recepient_address] += amount
+                else:
+                    wallets[recepient_address] = amount
+
+                # deposit fees to miner
+                if miner_address in wallets.keys():
+                    wallets[miner_address] += fees
+                else:
+                    wallets[miner_address] = fees
 
     return ExecutionStatus.SUCCESS, wallets

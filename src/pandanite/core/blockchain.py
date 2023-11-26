@@ -14,6 +14,7 @@ from pandanite.storage.db import PandaniteDB
 from pandanite.core.block import Block
 from pandanite.core.executor import execute_block
 
+
 class BlockChain:
     def __init__(self):
         self.db = PandaniteDB()
@@ -111,12 +112,14 @@ class BlockChain:
         wallets = self.db.get_wallets(withdrawal_wallets)
 
         # TODO: Run executor, add block
-        status, updated_wallets = execute_block(self.db, wallets, block, self.get_current_mining_fee(block.get_id())) 
+        status, updated_wallets = execute_block(
+            self.db, wallets, block, self.get_current_mining_fee(block.get_id())
+        )
 
         if status != ExecutionStatus.SUCCESS:
             return status
-        
-        updated_wallets = cast(Dict[PublicWalletAddress, TransactionAmount], updated_wallets)
+
+        updated_wallets = cast(Dict[str, TransactionAmount], updated_wallets)
 
         with self.db.start_session() as session:
             with session.start_transaction():

@@ -4,6 +4,8 @@ from pandanite.storage.db import PandaniteDB
 from pandanite.core.transaction import Transaction
 from pandanite.core.executor import execute_block, ExecutionStatus
 from pandanite.core.helpers import PDN
+from pandanite.core.crypto import wallet_address_to_string, public_key_to_string
+
 
 def test_checks_invalid_mining_fee():
     b = Block()
@@ -13,255 +15,174 @@ def test_checks_invalid_mining_fee():
     t = miner.mine()
     t.set_amount(PDN(100.0))
     b.add_transaction(t)
-    
+
     db = PandaniteDB()
     wallets = {}
     status, wallets = execute_block(db, wallets, b, PDN(50.0))
     assert status == ExecutionStatus.INCORRECT_MINING_FEE
 
 
-# TEST(checks_duplicate_mining_fee) {
-#     Block b
-#     Ledger ledger
-#     ledger.init("./test-data/tmpdb")
-#     TransactionStore txdb
-#     txdb.init("./test-data/tmpdb2")
-#     LedgerState deltas
-#     ExecutionStatus status
-#     User miner
-#     // add mining transaction twice
-#     Transaction t1 = miner.mine()
-#     Transaction t2 = miner.mine()
-#     b.addTransaction(t1)
-#     b.addTransaction(t2)
+def test_checks_duplicate_mining_fee():
+    b = Block()
+    miner = User()
+    # add mining transaction twice
+    t1 = miner.mine()
+    t2 = miner.mine()
+    b.add_transaction(t1)
+    b.add_transaction(t2)
 
-#     status = Executor::ExecuteBlock(b, ledger, txdb, deltas, PDN(50))
-#     ledger.closeDB();
-#     ledger.deleteDB();
-#     txdb.closeDB();
-#     txdb.deleteDB();
-#     ASSERT_EQUAL(status, EXTRA_MINING_FEE);     
-# }
-
-# TEST(checks_missing_mining_fee) {
-#     Block b;
-#     Ledger ledger;
-#     ledger.init("./test-data/tmpdb");
-#     TransactionStore txdb;
-#     txdb.init("./test-data/tmpdb2");
-#     LedgerState deltas;
-#     ExecutionStatus status;
-#     status = Executor::ExecuteBlock(b, ledger, txdb, deltas, PDN(50));
-#     ledger.closeDB();
-#     ledger.deleteDB();   
-#     txdb.closeDB();
-#     txdb.deleteDB();
-#     ASSERT_EQUAL(status, NO_MINING_FEE);  
-# }
-
-# TEST(check_valid_send) {
-#     Block b;
-
-#     Ledger ledger;
-#     ledger.init("./test-data/tmpdb");
-#     TransactionStore txdb;
-#     txdb.init("./test-data/tmpdb2");
-#     LedgerState deltas;
-#     ExecutionStatus status;
-
-#     User miner;
-#     User receiver;
-#     b.setId(2);
-#     Transaction t = miner.mine();
-#     b.addTransaction(t);
-#     Transaction t2 = miner.send(receiver, PDN(30));
-#     b.addTransaction(t2);
-
-#     status = Executor::ExecuteBlock(b, ledger, txdb, deltas, PDN(50));
-#     ASSERT_EQUAL(status, SUCCESS);
-
-#     PublicWalletAddress aKey = miner.getAddress(); 
-#     PublicWalletAddress bKey = receiver.getAddress();
-#     ASSERT_EQUAL(ledger.getWalletValue(aKey), PDN(20.0))
-#     ASSERT_EQUAL(ledger.getWalletValue(bKey), PDN(30.0))
-#     ledger.closeDB();
-#     ledger.deleteDB();
-#     txdb.closeDB();
-#     txdb.deleteDB();
-# }
-
-# TEST(check_wallet_tampering) {
-#     Block b;
-
-#     Ledger ledger;
-#     ledger.init("./test-data/tmpdb");
-#     TransactionStore txdb;
-#     txdb.init("./test-data/tmpdb2");
-#     LedgerState deltas;
-#     ExecutionStatus status;
-
-#     User miner;
-#     User receiver;
-#     b.setId(2);
-#     Transaction t = miner.mine();
-#     b.addTransaction(t);
-#     Transaction t2 = miner.send(receiver, PDN(30));
-#     b.addTransaction(t2);
-
-#     status = Executor::ExecuteBlock(b, ledger, txdb, deltas, PDN(50));
-#     PublicWalletAddress minerWallet = miner.getAddress(); 
-#     PublicWalletAddress receiverWallet = receiver.getAddress();
-
-#     ASSERT_EQUAL(status, SUCCESS);
-#     ASSERT_EQUAL(ledger.getWalletValue(minerWallet), PDN(20.0)) // MINER only has 20PDN
-
-#     Block c;
-#     c.setId(12000);
-#     Transaction t21 = receiver.mine();
-#     c.addTransaction(t21);
-#     Transaction t22x = miner.send(miner, PDN(30)); // try to send 30 PDN from miner to itself
-    
-#     // tamper t22 so that the from wallet is the receiver wallet
-#     json tmp = t22x.toJson();
-#     tmp["from"] = walletAddressToString(receiverWallet);
-#     Transaction t22 (tmp);
-#     t22.sign(miner.getPublicKey(), miner.getPrivateKey());
-#     c.addTransaction(t22);
-#     LedgerState deltas2;
-#     status = Executor::ExecuteBlock(c, ledger, txdb, deltas2, PDN(50));
-#     ASSERT_EQUAL(status, WALLET_SIGNATURE_MISMATCH);
-#     ledger.closeDB();
-#     ledger.deleteDB();
-#     txdb.closeDB();
-#     txdb.deleteDB();
-# }
+    db = PandaniteDB()
+    wallets = {}
+    status, _ = execute_block(db, wallets, b, PDN(50.0))
+    assert status == ExecutionStatus.EXTRA_MINING_FEE
 
 
-# TEST(check_low_balance) {
-#     Block b;
-
-#     Ledger ledger;
-#     ledger.init("./test-data/tmpdb");
-#     TransactionStore txdb;
-#     txdb.init("./test-data/tmpdb2");
-#     LedgerState deltas;
-#     ExecutionStatus status;
-    
-#     User miner;
-#     User receiver;
-#     b.setId(2);
-#     Transaction t = miner.mine();
-#     b.addTransaction(t);
-
-#     Transaction t2 = miner.send(receiver, PDN(100.0));
-#     b.addTransaction(t2);
-
-#     status = Executor::ExecuteBlock(b, ledger, txdb, deltas, PDN(50));
-#     ledger.closeDB();
-#     ledger.deleteDB();  
-#     txdb.closeDB();
-#     txdb.deleteDB();
-#     ASSERT_EQUAL(status, BALANCE_TOO_LOW);   
-# }
-
-# TEST(check_overflow) {
-#     Block b;
-
-#     Ledger ledger;
-#     ledger.init("./test-data/tmpdb");
-#     TransactionStore txdb;
-#     txdb.init("./test-data/tmpdb2");
-#     LedgerState deltas;
-#     ExecutionStatus status;
-    
-#     User miner;
-#     User receiver;
-#     b.setId(2);
-#     Transaction t = miner.mine();
-#     b.addTransaction(t);
-
-#     Transaction t2 = miner.send(receiver, 18446744073709551615);
-#     b.addTransaction(t2);
-
-#     status = Executor::ExecuteBlock(b, ledger, txdb, deltas, PDN(50));
-#     ledger.closeDB();
-#     ledger.deleteDB();  
-#     txdb.closeDB();
-#     txdb.deleteDB();
-#     ASSERT_EQUAL(status, BALANCE_TOO_LOW);   
-# }
+def test_checks_missing_mining_fee():
+    b = Block()
+    db = PandaniteDB()
+    wallets = {}
+    status, _ = execute_block(db, wallets, b, PDN(50.0))
+    assert status == ExecutionStatus.NO_MINING_FEE
 
 
-# TEST(check_miner_fee) {
-#     Block b;
+def test_check_valid_send():
+    b = Block()
+    miner = User()
+    receiver = User()
+    b.set_id(2)
+    t = miner.mine()
+    b.add_transaction(t)
+    t2 = miner.send(receiver, PDN(30.0))
+    print("SIG STATUS" + str(t2.signature_valid()))
+    b.add_transaction(t2)
 
-#     Ledger ledger;
-#     ledger.init("./test-data/tmpdb");
-#     TransactionStore txdb;
-#     txdb.init("./test-data/tmpdb2");
-#     LedgerState deltas;
-#     ExecutionStatus status;
-#     b.setId(2);
-#     User miner;
-#     User receiver;
-#     User other;
+    db = PandaniteDB()
+    wallets = {}
+    status, out = execute_block(db, wallets, b, PDN(50.0))
+    assert status == ExecutionStatus.SUCCESS
 
-#     // add mining transaction twice
-#     Transaction t = miner.mine();
-#     Transaction t2 = miner.send(receiver, PDN(20));
-#     miner.signTransaction(t2);
-#     b.addTransaction(t);
-#     b.addTransaction(t2);
-#     status = Executor::ExecuteBlock(b, ledger, txdb, deltas, PDN(50));
-#     ASSERT_EQUAL(status, SUCCESS);
-    
-#     Block b2;
-#     b2.setId(3);
-#     Transaction t3 = miner.mine();
-#     Transaction t4 = receiver.send(other, PDN(1));
-#     t4.setTransactionFee(PDN(10));
-#     receiver.signTransaction(t4);
-#     b2.addTransaction(t3);
-#     b2.addTransaction(t4);
-#     status = Executor::ExecuteBlock(b2, ledger, txdb, deltas, PDN(50));
-#     ASSERT_EQUAL(status, SUCCESS);
-#     ASSERT_EQUAL(ledger.getWalletValue(other.getAddress()), PDN(1)); 
-#     ASSERT_EQUAL(ledger.getWalletValue(receiver.getAddress()), PDN(9)); 
-#     ASSERT_EQUAL(ledger.getWalletValue(miner.getAddress()), PDN(90)); 
-#     ledger.closeDB();
-#     ledger.deleteDB();
-#     txdb.closeDB();
-#     txdb.deleteDB();
-# }
+    a_key = wallet_address_to_string(miner.get_address())
+    b_key = wallet_address_to_string(receiver.get_address())
+    assert out.get(a_key) == PDN(20.0)
+    assert out.get(b_key) == PDN(30.0)
 
 
+def test_check_sender_tampering():
+    b = Block()
+    miner = User()
+    receiver = User()
+    b.set_id(2)
+    t = miner.mine()
+    b.add_transaction(t)
+    t2 = miner.send(receiver, PDN(30))
+    b.add_transaction(t2)
 
-# TEST(check_bad_signature) {
-#     Block b;
-#     Ledger ledger;
-#     ledger.init("./test-data/tmpdb");
-#     TransactionStore txdb;
-#     txdb.init("./test-data/tmpdb2");
-#     LedgerState deltas;
-#     ExecutionStatus status;
-    
-#     User miner;
-#     User receiver;
-#     b.setId(2);
-#     Transaction t = miner.mine();
-#     b.addTransaction(t);
-#     Transaction t2 = miner.send(receiver, PDN(20.0));
+    db = PandaniteDB()
+    wallets = {}
+    status, out = execute_block(db, wallets, b, PDN(50.0))
+    assert status == ExecutionStatus.SUCCESS
 
-#     // sign with random sig
-#     User foo;
-#     t2.sign(foo.getPublicKey(), foo.getPrivateKey());
-#     b.addTransaction(t2);
+    a_key = wallet_address_to_string(miner.get_address())
+    b_key = wallet_address_to_string(receiver.get_address())
+    assert out.get(a_key) == PDN(20.0)
 
-#     status = Executor::ExecuteBlock(b, ledger, txdb, deltas, PDN(50));
+    c = Block()
+    c.set_id(12000)
+    t21 = receiver.mine()
+    c.add_transaction(t21)
+    t22x = miner.send(miner, PDN(30))
 
-#     ledger.closeDB();
-#     ledger.deleteDB();
-#     txdb.closeDB();
-#     txdb.deleteDB();
-#     ASSERT_EQUAL(status, INVALID_SIGNATURE);
-# }
+    # tamper t22 so that the from wallet is the receiver wallet
+    tmp = t22x.to_json()
+    tmp["signingKey"] = public_key_to_string(receiver.get_public_key())
+    t22 = Transaction()
+    t22.from_json(tmp)
+    t22.sign(miner.get_private_key())
+    c.add_transaction(t22)
+    db = PandaniteDB()
+    wallets = {}
+    status, out = execute_block(db, wallets, c, PDN(50.0))
+    assert status == ExecutionStatus.INVALID_SIGNATURE
+
+
+def test_check_low_balance():
+    b = Block()
+    miner = User()
+    receiver = User()
+    b.set_id(2)
+    t = miner.mine()
+    b.add_transaction(t)
+
+    t2 = miner.send(receiver, PDN(100.0))
+    b.add_transaction(t2)
+    db = PandaniteDB()
+    wallets = {}
+    status, out = execute_block(db, wallets, b, PDN(50.0))
+    assert status == ExecutionStatus.BALANCE_TOO_LOW
+
+
+def test_check_overflow():
+    b = Block()
+    miner = User()
+    receiver = User()
+    b.set_id(2)
+    t = miner.mine()
+    b.add_transaction(t)
+
+    t2 = miner.send(receiver, 18446744073709551615)
+    b.add_transaction(t2)
+    db = PandaniteDB()
+    wallets = {}
+    status, out = execute_block(db, wallets, b, PDN(50.0))
+    assert status == ExecutionStatus.BALANCE_TOO_LOW
+
+
+def test_check_miner_fee():
+    b = Block()
+    miner = User()
+    receiver = User()
+    other = User()
+    b.set_id(2)
+
+    t = miner.mine()
+    t2 = miner.send(receiver, PDN(20))
+    b.add_transaction(t)
+    b.add_transaction(t2)
+
+    db = PandaniteDB()
+    wallets = {}
+    status, out = execute_block(db, wallets, b, PDN(50.0))
+    assert status == ExecutionStatus.SUCCESS
+
+    b2 = Block()
+    b2.set_id(3)
+    t3 = miner.mine()
+    t4 = receiver.send(other, PDN(1), PDN(10))
+    b2.add_transaction(t3)
+    b2.add_transaction(t4)
+    status, out = execute_block(db, wallets, b2, PDN(50.0))
+    assert status == ExecutionStatus.SUCCESS
+    assert out.get(wallet_address_to_string(other.get_address()), PDN(1))
+    assert out.get(wallet_address_to_string(receiver.get_address()), PDN(9))
+    assert out.get(wallet_address_to_string(miner.get_address()), PDN(90))
+
+
+def test_check_bad_signature():
+    b = Block()
+    miner = User()
+    receiver = User()
+    b.set_id(2)
+    t = miner.mine()
+    b.add_transaction(t)
+    t2 = miner.send(receiver, PDN(20.0))
+
+    # sign with random sig
+    foo = User()
+    t2.sign(foo.get_private_key())
+    b.add_transaction(t2)
+
+    db = PandaniteDB()
+    wallets = {}
+    status, out = execute_block(db, wallets, b, PDN(50.0))
+
+    assert status == ExecutionStatus.INVALID_SIGNATURE

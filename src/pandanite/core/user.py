@@ -2,7 +2,6 @@ from pandanite.core.common import TransactionAmount
 from pandanite.core.helpers import PDN
 from pandanite.core.transaction import Transaction
 from pandanite.core.crypto import (
-    PublicWalletAddress,
     PublicKey,
     PrivateKey,
     generate_key_pair,
@@ -19,11 +18,13 @@ class User:
     def get_address(self):
         return wallet_address_from_public_key(self.public_key)
 
-    def send(self, to: "User", amount: TransactionAmount) -> Transaction:
-        from_wallet = self.get_address()
+    def send(
+        self, to: "User", amount: TransactionAmount, fee: TransactionAmount = 0
+    ) -> Transaction:
         to_wallet = to.get_address()
-        t = Transaction(to_wallet, amount, from_wallet, self.public_key)
-        self.sign_transaction(t)
+        t = Transaction(to_wallet, amount, self.public_key, fee)
+        t.sign(self.private_key)
+        assert t.signature_valid()
         return t
 
     def mine(self) -> Transaction:
@@ -34,6 +35,3 @@ class User:
 
     def get_private_key(self) -> PrivateKey:
         return self.private_key
-
-    def sign_transaction(self, t: Transaction):
-        t.sign(self.public_key, self.private_key)

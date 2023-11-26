@@ -132,7 +132,7 @@ def signature_to_string(t: TransactionSignature) -> str:
 
 
 def string_to_signature(t: str) -> TransactionSignature:
-    return hex_decode(t)
+    return bytes(hex_decode(t))
 
 
 def sign_with_private_key(content: str, priv_key: PrivateKey) -> TransactionSignature:

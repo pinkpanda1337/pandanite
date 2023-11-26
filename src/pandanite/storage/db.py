@@ -35,35 +35,35 @@ class PandaniteDB:
         self.info = self.db.info
 
     def add_block(self, block: Block):
-        self.blocks.replace_one({'id': block.get_id()}, block.to_json(), upsert=True)
-    
+        self.blocks.replace_one({"id": block.get_id()}, block.to_json(), upsert=True)
+
     def start_session(self):
         return self.db.start_session()
 
     def get_wallets(
         self, wallets: list[PublicWalletAddress]
-    ) -> Dict[PublicWalletAddress, TransactionAmount]:
-        wallet_totals: Dict[PublicWalletAddress, TransactionAmount]
+    ) -> Dict[str, TransactionAmount]:
+        wallet_totals: Dict[str, TransactionAmount]
         for wallet in wallets:
-            found_wallet = self.ledger.find_one(
-                {"wallet": wallet_address_to_string(wallet)}
-            )
+            wallet_address = wallet_address_to_string(wallet)
+            found_wallet = self.ledger.find_one({"wallet": wallet_address})
             if found_wallet:
-                wallet_totals[wallet] = found_wallet["balance"]
+                wallet_totals[wallet_address] = found_wallet["balance"]
         return wallet_totals
-    
-    def update_wallet(self, wallet: PublicWalletAddress, amount: TransactionAmount):
-        address = wallet_address_to_string(wallet)
+
+    def update_wallet(self, wallet: str, amount: TransactionAmount):
         updated_record = {
-            'address': address,
-            'balance': amount,
+            "address": wallet,
+            "balance": amount,
         }
-        self.ledger.replace_one({'address': address}, updated_record, upsert=True)
+        self.ledger.replace_one({"address": wallet}, updated_record, upsert=True)
 
     def add_wallet_transaction(self, wallet: PublicWalletAddress, tx_id: str):
         address = wallet_address_to_string(wallet)
-        self.wallet_to_transaction.update_one({'address': address}, {'$push': {'tx_ids': tx_id}}, upsert = True)
-        
+        self.wallet_to_transaction.update_one(
+            {"address": address}, {"$push": {"tx_ids": tx_id}}, upsert=True
+        )
+
     def pop_block(self):
         # TODO remove actual block from mongo collection
         return None

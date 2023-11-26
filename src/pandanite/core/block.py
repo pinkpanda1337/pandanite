@@ -14,7 +14,7 @@ from pandanite.core.transaction import Transaction
 
 
 class Block:
-    def __init__(self: 'Block'):
+    def __init__(self: "Block"):
         self.transactions: List[Transaction] = []
         self.id = 1
         self.timestamp = get_current_time()
@@ -46,7 +46,7 @@ class Block:
             "lastBlockHash": sha_256_to_string(self.last_block_hash),
             "transactions": [t.to_json() for t in self.transactions],
         }
-    
+
     def copy(self) -> "Block":
         return copy.deepcopy(self)
 
