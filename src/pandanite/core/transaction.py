@@ -147,7 +147,7 @@ class Transaction:
         if self.is_fee():
             return True
         if not self.signature:
-            raise Exception('No signature for transaction')
+            raise Exception("No signature for transaction")
         hash = self.hash_contents()
         return check_signature_bytes(bytes(hash), self.signature, self.signing_key)
 

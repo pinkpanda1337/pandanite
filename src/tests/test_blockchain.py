@@ -25,7 +25,7 @@ def test_check_adding_new_node_with_hash():
     block.set_difficulty(db.get_difficulty())
     block.set_timestamp(0)
     hash = block.get_hash()
-    solution = mine_hash(hash,block.get_difficulty())
+    solution = mine_hash(hash, block.get_difficulty())
     block.set_nonce(solution)
     status = blockchain.add_block(block)
     assert status == ExecutionStatus.SUCCESS

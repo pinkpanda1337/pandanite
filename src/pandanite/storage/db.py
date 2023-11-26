@@ -51,7 +51,7 @@ class PandaniteDB:
                 "num_blocks": 0,
                 "difficulty": 16,
             },
-            upsert=True
+            upsert=True,
         )
 
     def set_difficulty(self, difficulty: int):
@@ -63,7 +63,7 @@ class PandaniteDB:
                 "num_blocks": info["num_blocks"],
                 "difficulty": difficulty,
             },
-            upsert=True
+            upsert=True,
         )
 
     def get_num_blocks(self) -> int:
@@ -78,7 +78,7 @@ class PandaniteDB:
     def add_block(self, block: Block):
         self.blocks.replace_one({"id": block.get_id()}, block.to_json(), upsert=True)
         info = self.info.find_one({})
-        new_work = add_work(int(info['total_work']), block.get_difficulty())
+        new_work = add_work(int(info["total_work"]), block.get_difficulty())
         self.info.replace_one(
             {},
             {
@@ -86,7 +86,7 @@ class PandaniteDB:
                 "num_blocks": block.get_id(),
                 "difficulty": block.get_difficulty(),
             },
-            upsert=True
+            upsert=True,
         )
 
     def start_session(self):

@@ -141,7 +141,7 @@ class BlockChain:
                     self.db.add_wallet_transaction(t.get_recepient(), tx_id)
                     if not t.is_fee() and block.get_id() != 1:
                         self.db.add_wallet_transaction(t.get_sender(), tx_id)
-                        
+
         return ExecutionStatus.SUCCESS
 
     def _update_difficulty(self):
