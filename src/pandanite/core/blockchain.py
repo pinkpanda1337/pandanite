@@ -20,7 +20,6 @@ from pandanite.core.executor import execute_block
 class BlockChain:
     def __init__(self, db: PandaniteDB):
         self.db = db
-        self.difficulty = 16
 
     def load_genesis(self):
         self.db.clear()
@@ -65,10 +64,11 @@ class BlockChain:
             return ExecutionStatus.INVALID_TRANSACTION_COUNT
 
         if block.get_id() != self.db.get_num_blocks() + 1:
+            print(self.db.get_num_blocks())
             return ExecutionStatus.INVALID_BLOCK_ID
 
         # check difficulty + nonce
-        if block.get_difficulty() != self.difficulty:
+        if block.get_difficulty() != self.db.get_difficulty():
             if (
                 block.get_id() >= 536100
                 and block.get_id() <= 536200
@@ -133,13 +133,15 @@ class BlockChain:
 
         with self.db.start_session() as session:
             with session.start_transaction():
+                self.db.add_block(block)
                 for wallet in updated_wallets.keys():
                     self.db.update_wallet(wallet, updated_wallets[wallet])
                 for t in block.get_transactions():
                     tx_id = sha_256_to_string(t.get_hash())
                     self.db.add_wallet_transaction(t.get_recepient(), tx_id)
-                    if not t.is_fee():
+                    if not t.is_fee() and block.get_id() != 1:
                         self.db.add_wallet_transaction(t.get_sender(), tx_id)
+                        
         return ExecutionStatus.SUCCESS
 
     def _update_difficulty(self):
@@ -155,4 +157,4 @@ class BlockChain:
         numBlocksElapsed = last_id - first_id
         target = numBlocksElapsed * DESIRED_BLOCK_TIME_SEC
         difficulty = last.get_difficulty()
-        self.difficulty = compute_difficulty(difficulty, elapsed, target)
+        self.db.set_difficulty(compute_difficulty(difficulty, elapsed, target))

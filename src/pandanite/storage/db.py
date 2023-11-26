@@ -4,6 +4,7 @@ from pandanite.logging import logger
 from pandanite.core.transaction import Transaction
 from pandanite.core.crypto import (
     SHA256Hash,
+    add_work,
     PublicWalletAddress,
     NULL_SHA256_HASH,
     wallet_address_to_string,
@@ -43,9 +44,50 @@ class PandaniteDB:
         self.ledger.drop()
         self.wallet_to_transaction.drop()
         self.info.drop()
+        self.info.replace_one(
+            {},
+            {
+                "total_work": str(0),
+                "num_blocks": 0,
+                "difficulty": 16,
+            },
+            upsert=True
+        )
+
+    def set_difficulty(self, difficulty: int):
+        info = self.info.find_one({})
+        self.info.replace_one(
+            {},
+            {
+                "total_work": info["total_work"],
+                "num_blocks": info["num_blocks"],
+                "difficulty": difficulty,
+            },
+            upsert=True
+        )
+
+    def get_num_blocks(self) -> int:
+        return self.info.find_one({})["num_blocks"]
+
+    def get_total_work(self) -> int:
+        return self.info.find_one()["total_work"]
+
+    def get_difficulty(self) -> int:
+        return self.info.find_one()["difficulty"]
 
     def add_block(self, block: Block):
         self.blocks.replace_one({"id": block.get_id()}, block.to_json(), upsert=True)
+        info = self.info.find_one({})
+        new_work = add_work(int(info['total_work']), block.get_difficulty())
+        self.info.replace_one(
+            {},
+            {
+                "total_work": str(new_work),
+                "num_blocks": block.get_id(),
+                "difficulty": block.get_difficulty(),
+            },
+            upsert=True
+        )
 
     def start_session(self):
         return self.client.start_session()
@@ -78,9 +120,6 @@ class PandaniteDB:
         # TODO remove actual block from mongo collection
         return None
 
-    def get_num_blocks(self) -> int:
-        return self.blocks.count_documents({})
-
     def find_block_for_transaction(self, t: Transaction) -> int:
         return 0
 
@@ -104,10 +143,6 @@ class PandaniteDB:
     def get_block(self, block_id: int) -> Block:
         if block_id <= 0 or block_id > self.get_num_blocks():
             raise Exception("Invalid block")
-        return self.blocks.find_one({"id": block_id})
-
-    def get_total_work(self) -> int:
-        return self.info.find_one()["total_work"]
-
-    def get_difficulty(self) -> int:
-        return self.get_block(self.get_num_blocks()).difficulty
+        b = Block()
+        b.from_json(self.blocks.find_one({"id": block_id}))
+        return b

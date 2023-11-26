@@ -180,11 +180,6 @@ class Node:
 
 def get_merkle_hash(items: List[Transaction]) -> SHA256Hash:
     items.sort(key=lambda a: sha_256_to_string(a.get_hash()), reverse=True)
-    print(
-        "FOUND: ",
-        "4727299c12a54980b4e49584f358422ab10ca3b77e82f509e6feb0f6614e2f32"
-        in [sha_256_to_string(a.get_hash()).lower() for a in items],
-    )
     q: Deque[Node] = deque()
 
     for item in items:

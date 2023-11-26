@@ -81,6 +81,8 @@ def execute_block(
         if block.get_id() == 1:
             if recepient_address in wallets.keys():
                 wallets[recepient_address] += t.get_amount()
+            else:
+                wallets[recepient_address] = t.get_amount()
         else:
             if t.is_fee():
                 amount = t.get_amount()
