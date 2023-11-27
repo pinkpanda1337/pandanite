@@ -9,7 +9,7 @@ from pandanite.core.constants import (
     MAX_TRANSACTIONS_PER_BLOCK,
 )
 from pandanite.core.common import TransactionAmount
-from pandanite.core.crypto import PublicWalletAddress, sha_256_to_string, mine_hash
+from pandanite.core.crypto import PublicWalletAddress, sha_256_to_string
 from pandanite.core.executor import ExecutionStatus
 from pandanite.core.transaction import Transaction, get_merkle_hash
 from pandanite.storage.db import PandaniteDB
@@ -18,17 +18,17 @@ from pandanite.core.executor import execute_block, rollback_block
 
 
 class BlockChain:
-    def __init__(self, db: PandaniteDB):
+    def __init__(self: "BlockChain", db: PandaniteDB):
         self.db = db
 
-    def load_genesis(self):
+    def load_genesis(self: "BlockChain"):
         self.db.clear()
         with open("genesis.json", "r") as f:
             block = Block()
             block.from_json(json.loads(f.read()))
             return self.add_block(block)
 
-    def get_current_mining_fee(self, block_id: int) -> int:
+    def get_current_mining_fee(self: "BlockChain", block_id: int) -> int:
         logical_block = block_id + 125180 + 7750 + 18000
         amount = 50.0
         while logical_block >= 666666:
@@ -48,7 +48,7 @@ class BlockChain:
         supply += blocks * amount
         return int(supply + amount_offset)
 
-    def verify_transaction(self, t: Transaction) -> ExecutionStatus:
+    def verify_transaction(self: "BlockChain", t: Transaction) -> ExecutionStatus:
         return ExecutionStatus.EXPIRED_TRANSACTION
 
     def get_header_chain_stats(self) -> Dict[str, int]:
@@ -76,12 +76,16 @@ class BlockChain:
                         self.db.remove_wallet_transaction(t.get_sender(), tx_id)
                 self._update_difficulty()
 
-    def add_block(self, block: Block, network_timestamp: int = 0) -> ExecutionStatus:
+    def add_block(self: "BlockChain", block: Block, network_timestamp: int = 0) -> ExecutionStatus:
         if len(block.get_transactions()) > MAX_TRANSACTIONS_PER_BLOCK:
             return ExecutionStatus.INVALID_TRANSACTION_COUNT
-
+        
+        # check for repeated transactions
+        for t in block.get_transactions():
+            if (self.db.block_for_transaction(t) > 0 and not t.is_fee()):
+                return ExecutionStatus.EXPIRED_TRANSACTION
+        
         if block.get_id() != self.db.get_num_blocks() + 1:
-            print(self.db.get_num_blocks())
             return ExecutionStatus.INVALID_BLOCK_ID
 
         # check difficulty + nonce
@@ -132,11 +136,12 @@ class BlockChain:
         if block.get_merkle_root() != merkle_root:
             return ExecutionStatus.INVALID_MERKLE_ROOT
 
-        withdrawal_wallets: list[PublicWalletAddress] = []
+        affected_wallets: list[PublicWalletAddress] = []
         for t in block.get_transactions():
+            affected_wallets.append(t.get_recepient())
             if not t.is_fee():
-                withdrawal_wallets.append(t.get_sender())
-        wallets = self.db.get_wallets(withdrawal_wallets)
+                affected_wallets.append(t.get_sender())
+        wallets = self.db.get_wallets(affected_wallets)
 
         # TODO: Run executor, add block
         status, updated_wallets = execute_block(
@@ -158,10 +163,10 @@ class BlockChain:
                     self.db.add_wallet_transaction(t.get_recepient(), tx_id)
                     if not t.is_fee() and block.get_id() != 1:
                         self.db.add_wallet_transaction(t.get_sender(), tx_id)
-
+                self._update_difficulty()
         return ExecutionStatus.SUCCESS
 
-    def _update_difficulty(self):
+    def _update_difficulty(self: "BlockChain"):
         if self.db.get_num_blocks() <= DIFFICULTY_LOOKBACK * 2:
             return
         if self.db.get_num_blocks() % DIFFICULTY_LOOKBACK != 0:

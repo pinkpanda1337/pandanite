@@ -62,6 +62,9 @@ class Transaction:
         if "from" in data.keys() and len(data["from"]) != 0:
             self.set_wallet_override(string_to_wallet_address(data["from"]))
 
+    def get_id(self):
+        return sha_256_to_string(self.hash_contents())
+
     def to_json(self):
         result = {}
         result["to"] = wallet_address_to_string(self.to)

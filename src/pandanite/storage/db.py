@@ -18,7 +18,7 @@ blocks: Results of block.to_json() are stored directly
 transaction_to_block: { 'tx_id': string, 'block_id': int }
 ledger: {'address': string, 'balance': int }
 wallet_to_transaction: {'address': string, 'tx_ids': list[string]}
-info: {'total_work': int}
+info: {'total_work': int, 'difficulty': int, 'num_blocks': int}
 """
 
 
@@ -70,13 +70,19 @@ class PandaniteDB:
         return self.info.find_one({})["num_blocks"]
 
     def get_total_work(self) -> int:
-        return self.info.find_one()["total_work"]
+        return int(self.info.find_one()["total_work"])
 
     def get_difficulty(self) -> int:
         return self.info.find_one()["difficulty"]
 
     def add_block(self, block: Block):
         self.blocks.replace_one({"id": block.get_id()}, block.to_json(), upsert=True)
+        for t in block.get_transactions():
+            self.transaction_to_block.replace_one(
+                {"tx_id": t.get_id()},
+                {"tx_id": t.get_id(), "block_id": block.get_id()},
+                upsert=True,
+            )
         info = self.info.find_one({})
         new_work = add_work(int(info["total_work"]), block.get_difficulty())
         self.info.replace_one(
@@ -102,6 +108,13 @@ class PandaniteDB:
             if found_wallet:
                 wallet_totals[wallet_address] = found_wallet["balance"]
         return wallet_totals
+
+    def block_for_transaction(self, t: Transaction) -> int:
+        found_tx = self.transaction_to_block.find_one({"tx_id": t.get_id()})
+        if found_tx != None:
+            return found_tx["block_id"]
+        else:
+            return -1
 
     def update_wallet(self, wallet: str, amount: TransactionAmount):
         updated_record = {
