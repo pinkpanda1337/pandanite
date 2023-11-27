@@ -7,7 +7,12 @@ pip install poetry
 poetry install
 ```
 
-You need a mongodb instance running on port 27017 to run tests
+You need a mongodb instance running on port 27017 to run tests or app
+
+# Run Server
+```
+poetry run flask run -h localhost -p 3000
+```
 
 # Run Tests
 ```

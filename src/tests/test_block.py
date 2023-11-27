@@ -1,4 +1,3 @@
-import json
 from pandanite.core.block import Block
 from pandanite.core.user import User
 

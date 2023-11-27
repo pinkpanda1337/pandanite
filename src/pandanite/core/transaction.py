@@ -11,7 +11,6 @@ from pandanite.core.crypto import (
     NULL_SHA256_HASH,
     NULL_ADDRESS,
     TransactionSignature,
-    sha_256,
     sha_256_to_string,
     wallet_address_to_string,
     string_to_wallet_address,
@@ -22,7 +21,6 @@ from pandanite.core.crypto import (
     sign_with_private_key_bytes,
     check_signature_bytes,
     concat_hashes,
-    hex_encode,
     wallet_address_from_public_key,
 )
 from pandanite.core.common import TransactionAmount
@@ -182,6 +180,8 @@ class Node:
 
 
 def get_merkle_hash(items: List[Transaction]) -> SHA256Hash:
+    # NOTE: This is not actually building a Merkle Tree
+    # it is copied over from and consistent with the original C++ code
     items.sort(key=lambda a: sha_256_to_string(a.get_hash()), reverse=True)
     q: Deque[Node] = deque()
 
