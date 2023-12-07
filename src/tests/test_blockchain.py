@@ -8,6 +8,7 @@ from pandanite.storage.db import PandaniteDB
 from pandanite.core.helpers import PDN
 from pandanite.core.crypto import NULL_SHA256_HASH
 
+
 def test_check_adding_new_node_with_hash():
     db = PandaniteDB()
     blockchain = BlockChain(db)
@@ -85,6 +86,7 @@ def test_check_adding_wrong_lastblock_hash_fails():
     status = blockchain.add_block(block)
     assert status == ExecutionStatus.INVALID_LASTBLOCK_HASH
 
+
 def test_check_adding_two_nodes_updates_ledger():
     db = PandaniteDB()
     blockchain = BlockChain(db)
@@ -111,6 +113,7 @@ def test_check_adding_two_nodes_updates_ledger():
     wallets = db.get_wallets([miner.get_address()])
     assert wallets[miner_address] == PDN(100.0)
 
+
 def test_check_sending_transaction_updates_ledger():
     db = PandaniteDB()
     blockchain = BlockChain(db)
@@ -123,7 +126,7 @@ def test_check_sending_transaction_updates_ledger():
         new_block = Block()
         new_block.set_id(i)
         new_block.add_transaction(fee)
-        if (i==3):
+        if i == 3:
             t = miner.send(other, PDN(20.0))
             new_block.add_transaction(t)
         merkle_hash = get_merkle_hash(new_block.get_transactions())
@@ -159,7 +162,7 @@ def test_check_duplicate_tx_fails():
         new_block = Block()
         new_block.set_id(i)
         new_block.add_transaction(fee)
-        if (i==3 or i == 4):
+        if i == 3 or i == 4:
             new_block.add_transaction(tx)
         merkle_hash = get_merkle_hash(new_block.get_transactions())
         new_block.set_merkle_root(merkle_hash)

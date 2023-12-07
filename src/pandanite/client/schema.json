@@ -1,0 +1,37 @@
+[
+  {
+    "namespace": "pandanite",
+    "type": "record",
+    "name": "Transaction",
+    "fields": [
+      { "name": "to_wallet", "type": "bytes" },
+      { "name": "amount", "type": "long" },
+      { "name": "signing_key", "type": "bytes" },
+      { "name": "timestamp", "type": "long" },
+      { "name": "fee", "type": "long" }
+    ]
+  },
+  {
+    "namespace": "pandanite",
+    "type": "record",
+    "name": "Block",
+    "fields": [
+      {
+        "name": "transactions",
+        "type": [
+          {
+            "type": "array",
+            "items": "Transaction"
+          },
+          "null"
+        ]
+      },
+      { "name": "id", "type": "int" },
+      { "name": "timestamp", "type": "long" },
+      { "name": "difficulty", "type": "int" },
+      { "name": "merkle_root", "type": "bytes" },
+      { "name": "last_block_hash", "type": "bytes" },
+      { "name": "nonce", "type": "bytes" }
+    ]
+  }
+]

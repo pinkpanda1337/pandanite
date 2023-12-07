@@ -135,7 +135,7 @@ def rollback_block(
             mining_fee = t.get_amount()
             break
     if not miner:
-        raise Exception('Invalid block: no miner')
+        raise Exception("Invalid block: no miner")
     miner_address = wallet_address_to_string(miner)
     wallets[miner_address] -= mining_fee
 

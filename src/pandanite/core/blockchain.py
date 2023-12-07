@@ -1,5 +1,5 @@
 import json
-
+import threading
 from typing import Dict, cast
 from pandanite.logging import logger
 from pandanite.core.helpers import PDN, compute_difficulty
@@ -20,6 +20,10 @@ from pandanite.core.executor import execute_block, rollback_block
 class BlockChain:
     def __init__(self: "BlockChain", db: PandaniteDB):
         self.db = db
+        self.lock = threading.Lock()
+
+    def start_session(self):
+        return self.lock
 
     def load_genesis(self: "BlockChain"):
         self.db.clear()
@@ -76,15 +80,17 @@ class BlockChain:
                         self.db.remove_wallet_transaction(t.get_sender(), tx_id)
                 self._update_difficulty()
 
-    def add_block(self: "BlockChain", block: Block, network_timestamp: int = 0) -> ExecutionStatus:
+    def add_block(
+        self: "BlockChain", block: Block, network_timestamp: int = 0
+    ) -> ExecutionStatus:
         if len(block.get_transactions()) > MAX_TRANSACTIONS_PER_BLOCK:
             return ExecutionStatus.INVALID_TRANSACTION_COUNT
-        
+
         # check for repeated transactions
         for t in block.get_transactions():
-            if (self.db.block_for_transaction(t) > 0 and not t.is_fee()):
+            if self.db.block_for_transaction(t) > 0 and not t.is_fee():
                 return ExecutionStatus.EXPIRED_TRANSACTION
-        
+
         if block.get_id() != self.db.get_num_blocks() + 1:
             return ExecutionStatus.INVALID_BLOCK_ID
 
