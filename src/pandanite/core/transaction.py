@@ -1,4 +1,7 @@
 import copy
+import avro.schema
+import io
+from avro.io import DatumWriter, DatumReader
 import ed25519
 import hashlib
 from typing import Dict, List, Optional, Deque, cast
@@ -63,7 +66,7 @@ class Transaction:
     def get_id(self):
         return sha_256_to_string(self.hash_contents())
 
-    def to_json(self):
+    def to_json(self) -> Dict:
         result = {}
         result["to"] = wallet_address_to_string(self.to)
         result["amount"] = self.amount
@@ -74,6 +77,44 @@ class Transaction:
             result["signingKey"] = public_key_to_string(self.signing_key)
             result["signature"] = signature_to_string(self.signature)
         return result
+
+    def to_avro_dict(self) -> Dict:
+        result = {}
+        result["to"] = bytes(self.to)
+        result["amount"] = self.amount
+        result["timestamp"] = self.timestamp
+        result["fee"] = self.fee
+        if not self.is_fee():
+            result["signing_key"] = self.signing_key.to_bytes()
+            result["signature"] = bytes(self.signature)
+        return result
+
+    def to_avro(self, include_transactions=False) -> bytes:
+        schema = avro.schema.parse(open("schema.json", "rb").read())
+        writer = DatumWriter(schema)
+        bytes_writer = io.BytesIO()
+        encoder = avro.io.BinaryEncoder(bytes_writer)
+        writer.write(self.to_avro_dict(), encoder)
+        ret = bytes_writer.getvalue()
+        bytes_writer.close()
+        return ret
+
+    def from_avro(self, data: bytes):
+        schema = avro.schema.parse(open("schema.json", "rb").read())
+        f = io.BytesIO(data)
+        decoder = avro.io.BinaryDecoder(f)
+        reader = DatumReader(schema)
+        result = reader.read(decoder)
+        self.from_avro_dict(result)
+
+    def from_avro_dict(self, result: dict):
+        self.timestamp = result["timestamp"]
+        self.to = result["to"]
+        self.fee = result["fee"]
+        self.amount = result["amount"]
+        if result.get("signing_key"):
+            self.signature = result["signature"]
+            self.signing_key = ed25519.keys.VerifyingKey(result["signing_key"])
 
     def copy(self) -> "Transaction":
         return copy.deepcopy(self)

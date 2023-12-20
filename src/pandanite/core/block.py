@@ -1,5 +1,7 @@
 import copy
-import binascii
+import avro.schema
+import io
+from avro.io import DatumWriter, DatumReader
 from typing import List, Dict
 from pandanite.core.crypto import (
     SHA256Hash,
@@ -47,6 +49,48 @@ class Block:
             "lastBlockHash": sha_256_to_string(self.last_block_hash),
             "transactions": [t.to_json() for t in self.transactions],
         }
+    
+    def to_avro_dict(self, include_transactions=False) -> Dict:
+        transactions = None
+        if include_transactions:
+            transactions = [tx.to_avro_dict() for tx in self.transactions]
+        return {
+            "id": self.id,
+            "timestamp": self.timestamp,
+            "difficulty": self.difficulty,
+            "nonce": bytes(self.nonce),
+            "merkle_root": bytes(self.merkle_root),
+            "last_block_hash": bytes(self.last_block_hash),
+            "transactions": transactions
+        }
+
+    def to_avro(self, include_transactions=False) -> bytes:
+        schema = avro.schema.parse(open("schema.json", "rb").read())
+        writer = DatumWriter(schema)
+        bytes_writer = io.BytesIO()
+        encoder = avro.io.BinaryEncoder(bytes_writer)
+        writer.write(self.to_avro_dict(include_transactions=include_transactions), encoder)
+        ret = bytes_writer.getvalue()
+        bytes_writer.close()
+        return ret
+    
+    def from_avro(self, data: bytes):
+        schema = avro.schema.parse(open("schema.json", "rb").read())
+        f = io.BytesIO(data)
+        decoder = avro.io.BinaryDecoder(f)
+        reader = DatumReader(schema)
+        result = reader.read(decoder)
+        self.nonce = result["nonce"]
+        self.merkle_root = result["merkle_root"]
+        self.last_block_hash = result["last_block_hash"]
+        self.id = result["id"]
+        self.difficulty = result["difficulty"]
+        self.timestamp = result["timestamp"]
+        self.transactions = []
+        for t in result["transactions"]:
+            curr = Transaction()
+            curr.from_avro_dict(t)
+            self.transactions.append(curr)
 
     def copy(self) -> "Block":
         return copy.deepcopy(self)

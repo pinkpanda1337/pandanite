@@ -44,3 +44,32 @@ def test_check_transaction_json_serialization():
     assert t.hash_contents() == deserialized.hash_contents()
     assert t == deserialized
     assert ts == deserialized.get_timestamp()
+
+def test_check_transaction_avro_serialization():
+    miner = User()
+    receiver = User()
+
+    t = miner.mine()
+    t2 = miner.send(receiver, PDN(30.0))
+
+    assert t2.signature_valid()
+
+    # test the send transaction
+    serialized = t2.to_avro()
+    deserialized = Transaction()
+    deserialized.from_avro(serialized)
+    ts = t2.get_timestamp()
+    assert deserialized.signature_valid()
+    assert t2 == deserialized
+    assert t2.get_hash() == deserialized.get_hash()
+    assert t2.hash_contents() == deserialized.hash_contents()
+    assert ts == deserialized.get_timestamp()
+
+    # test mining transaction
+    serialized = t.to_avro()
+    deserialized = Transaction()
+    deserialized.from_avro(serialized)
+    ts = t.get_timestamp()
+    assert t.hash_contents() == deserialized.hash_contents()
+    assert t == deserialized
+    assert ts == deserialized.get_timestamp()

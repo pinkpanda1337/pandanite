@@ -1,9 +1,12 @@
-from flask import Flask
+import random
+import string
+from flask import Flask, request
 from pandanite.core.blockchain import BlockChain
 from pandanite.storage.db import PandaniteDB
 
 app = Flask(__name__)
 
+name = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 db = PandaniteDB()
 blockchain = BlockChain(db)
 if db.get_num_blocks() == 0:
@@ -14,9 +17,9 @@ if db.get_num_blocks() == 0:
 def main():
     return "<h1>Pandanite Python Node</h1>"
 
-
+@app.route("/name")
 def name():
-    pass
+    return name
 
 
 @app.route("/info", methods=["GET"])
@@ -62,7 +65,24 @@ def blocks():
         include_transactions: boolean - Whether or not to include transactions in response
         format: string - Specifies format of returned data (either "avro" or "json")
     """
-    pass
+    args = request.args
+    
+    block_id = args.get('block_id', default=None, type=int)
+    format = args.get('format', default='json', type=str)
+    include_transactions = args.get('include_transactions', default=False, type=bool)
+    
+    if not block_id:
+        return "No block id specified"
+    
+    block = db.get_block(block_id)
+    
+    if format == 'json':
+        return block.to_json()
+    elif format == 'avro':
+        return block.to_avro(include_transactions=include_transactions)
+    else:
+        return "Unsupported format requested"
+    
 
 
 @app.route("/add_block", methods=["POST"])

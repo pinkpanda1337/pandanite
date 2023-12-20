@@ -4,11 +4,12 @@
     "type": "record",
     "name": "Transaction",
     "fields": [
-      { "name": "to_wallet", "type": "bytes" },
+      { "name": "to", "type": "bytes" },
       { "name": "amount", "type": "long" },
-      { "name": "signing_key", "type": "bytes" },
+      { "name": "signing_key", "type": ["bytes", "null"] },
       { "name": "timestamp", "type": "long" },
-      { "name": "fee", "type": "long" }
+      { "name": "fee", "type": "long" },
+      { "name": "signature", "type": ["bytes", "null"]}
     ]
   },
   {
